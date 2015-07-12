@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/hybridgroup/gobot"
@@ -14,28 +15,26 @@ func main() {
 	gbot := gobot.NewGobot()
 
 	board := edison.NewEdisonAdaptor("edison")
+	lidar := NewLIDARLiteDriver(board, "lidar")
 	screen := i2c.NewGroveLcdDriver(board, "screen")
 
 	work := func() {
-		screen.Write("hello")
-
-		screen.SetRGB(255, 0, 0)
-
-		gobot.After(5*time.Second, func() {
+		gobot.Every(500*time.Millisecond, func() {
+			distance, err := lidar.Distance()
+			if err != nil {
+				fmt.Println("error: ", err)
+			}
+			dist := float32(distance) / 2.54
+			fmt.Println("Distance (in)", dist)
 			screen.Clear()
 			screen.Home()
-			screen.SetRGB(0, 255, 0)
-			screen.Write("goodbye")
+			screen.Write(fmt.Sprintf("%f\"", dist))
 		})
-
-		screen.Home()
-		<-time.After(1 * time.Second)
-		screen.SetRGB(0, 0, 255)
 	}
 
 	robot := gobot.NewRobot("screenBot",
 		[]gobot.Connection{board},
-		[]gobot.Device{screen},
+		[]gobot.Device{lidar, screen},
 		work,
 	)
 
